@@ -1,0 +1,14 @@
+[
+  {
+    "dir_name": "F:\\src\\robim\\web_cam\\bin\\Debug\\net8.0-windows\\Dump",
+    "keep_duration": 120,
+    "exludes": "",
+    "enable": true
+  },
+  {
+    "dir_name": "F:\\src\\robim\\web_cam\\bin\\Debug\\net8.0-windows\\Resources",
+    "keep_duration": 120,
+    "exludes": "scene_*",
+    "enable": true
+  }
+]
