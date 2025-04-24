@@ -10,8 +10,9 @@ using json = nlohmann::json;
 void to_json(json& j, const ConfigEntry& entry) {
     j = json{
         {"dir_name", entry.dir_name},
-        {"keep_duration", entry.keep_duration.count()},
-        {"exludes", entry.exludes},
+        {"keep_hours", entry.keep_hours.count()},
+        {"includes", entry.includes},
+        {"excludes", entry.excludes},
         {"enable", entry.enable}  // 处理新增字段
     };
 }
@@ -19,8 +20,9 @@ void to_json(json& j, const ConfigEntry& entry) {
 // 实现 JSON 反序列化函数
 void from_json(const json& j, ConfigEntry& entry) {
     entry.dir_name = j.at("dir_name").get<std::string>();
-    entry.keep_duration = std::chrono::hours(j.at("keep_duration").get<int>());
-    entry.exludes = j.at("exludes").get<std::string>();
+    entry.keep_hours = std::chrono::hours(j.at("keep_hours").get<int>());
+    entry.includes = j.at("includes").get<std::string>();
+    entry.excludes = j.at("excludes").get<std::string>();
     entry.enable = j.at("enable").get<bool>();  // 处理新增字段
 }
 
@@ -102,10 +104,40 @@ std::vector<std::string> parseExcludes(const std::string& exludes, const std::st
     return excludesList;
 }
 
+// 解析包含列表
+std::vector<std::string> parseIncludes(const std::string& includes, const std::string& dir_name) {
+    std::vector<std::string> includesList;
+    std::istringstream iss(includes);
+    std::string item;
+    while (std::getline(iss, item, ';')) {
+        if (!item.empty()) {
+            // 处理相对路径
+            if (!fs::path(item).is_absolute()) {
+                item = (fs::path(dir_name) / item).string();
+            }
+            includesList.push_back(item);
+        }
+    }
+    return includesList;
+}
+
 // 检查文件或文件夹是否在排除列表中
 bool isExcluded(const fs::path& path, const std::vector<std::string>& excludesList) {
     for (const auto& exclude : excludesList) {
         if (matchesExclusion(path, exclude)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 检查文件或文件夹是否在包含列表中
+bool isIncluded(const fs::path& path, const std::vector<std::string>& includesList) {
+    if (includesList.empty()) {
+        return true;
+    }
+    for (const auto& include : includesList) {
+        if (matchesExclusion(path, include)) {
             return true;
         }
     }
@@ -124,7 +156,7 @@ std::string formatTimePoint(const std::chrono::system_clock::time_point& timePoi
 
 void DeleteOldFiles(const ConfigEntry& configItem)
 {
-	DeleteOldFiles(configItem.dir_name, configItem.keep_duration, configItem.exludes);
+    DeleteOldFiles(configItem.dir_name, configItem.keep_hours, configItem.excludes, configItem.includes);
 }
 
 
@@ -134,21 +166,21 @@ bool DeleteOldFilesByConfigFile(const std::string& configFile)
 {
     std::vector<ConfigEntry> configs;
 
-	if (!readConfig(configFile, configs)) {
-		RP_LOG_ERROR("Failed to read config file: {}", configFile);
-		return false;
-	}
+    if (!readConfig(configFile, configs)) {
+        RP_LOG_ERROR("Failed to read config file: {}", configFile);
+        return false;
+    }
 
-	for (const auto& configItem : configs) {
-		if (!configItem.enable) {
-			RP_LOG_WARN("Skipping disabled config for directory: {}", configItem.dir_name);
-			continue;
-		}
-		//std::cout << "Processing directory: " << configItem.dir_name << std::endl;
-		RP_LOG_INFO("Processing directory: {},{},{}", configItem.dir_name, configItem.keep_duration,configItem.exludes);
-		DeleteOldFiles(configItem);
-	}
-	return true;
+    for (const auto& configItem : configs) {
+        if (!configItem.enable) {
+            RP_LOG_WARN("Skipping disabled config for directory: {}", configItem.dir_name);
+            continue;
+        }
+        //std::cout << "Processing directory: " << configItem.dir_name << std::endl;
+        RP_LOG_INFO("Processing directory: {},keep_hours={},excludes={},includes={}", configItem.dir_name, configItem.keep_hours, configItem.excludes, configItem.includes);
+        DeleteOldFiles(configItem.dir_name, configItem.keep_hours, configItem.excludes, configItem.includes);
+    }
+    return true;
 
 }
 
@@ -181,20 +213,20 @@ std::pair<size_t, size_t> getFolderInfo(const std::string& dir_name, const std::
 
 std::string getSizeStr(size_t totalSize)
 {
-	std::string sizeStr;
-	if (totalSize < 1024) {
-		sizeStr = std::to_string(totalSize) + " B";
-	}
-	else if (totalSize < 1024 * 1024) {
-		sizeStr = std::to_string(totalSize / 1024) + " KB";
-	}
-	else if (totalSize < 1024 * 1024 * 1024) {
-		sizeStr = std::to_string(totalSize / (1024 * 1024)) + " MB";
-	}
-	else {
-		sizeStr = std::to_string(totalSize / (1024 * 1024 * 1024)) + " GB";
-	}
-	return sizeStr;
+    std::string sizeStr;
+    if (totalSize < 1024) {
+        sizeStr = std::to_string(totalSize) + " B";
+    }
+    else if (totalSize < 1024 * 1024) {
+        sizeStr = std::to_string(totalSize / 1024) + " KB";
+    }
+    else if (totalSize < 1024 * 1024 * 1024) {
+        sizeStr = std::to_string(totalSize / (1024 * 1024)) + " MB";
+    }
+    else {
+        sizeStr = std::to_string(totalSize / (1024 * 1024 * 1024)) + " GB";
+    }
+    return sizeStr;
 }
 
 // 打印文件夹信息
@@ -207,6 +239,56 @@ void printFolderInfo(const std::string& dir_name, size_t totalSize, size_t fileC
 // 打印文件夹信息
 void printFolderInfo(const std::string& dir_name, const std::string& exludes /*= ""*/) {
     auto [totalSize, fileCount] = getFolderInfo(dir_name, exludes);
-	printFolderInfo(dir_name, totalSize, fileCount);
+    printFolderInfo(dir_name, totalSize, fileCount);
 }
 
+
+// 递归删除旧文件
+template<typename Rep, typename Period>
+void DeleteOldFiles(const std::string& dir_name, std::chrono::duration<Rep, Period> keep_duration, const std::string& exludes, const std::string& includes) {
+    auto excludesList = parseExcludes(exludes, dir_name);
+    auto includesList = parseIncludes(includes, dir_name);
+    auto now = std::chrono::system_clock::now();
+
+    //std::cout << "Keep duration: " << formatDuration(keep_duration) << std::endl;
+    RP_LOG_INFO("Start delete [{}]. Keep duration: {}", dir_name, formatDuration(keep_duration));
+    auto [totalSize, fileCount] = getFolderInfo(dir_name, exludes);
+    printFolderInfo(dir_name, totalSize, fileCount);
+    for (const auto& entry : fs::recursive_directory_iterator(dir_name)) {
+        if (isExcluded(entry.path(), excludesList) || !isIncluded(entry.path(), includesList))
+        {
+            //std::cout << "Excluded: " << entry.path() << std::endl;
+            RP_LOG_INFO("Excluded: {}", entry.path());
+            continue;
+        }
+        if (entry.is_regular_file()) {
+            auto lastWriteTime = fs::last_write_time(entry.path());
+            auto lastWriteTimeSys = std::chrono::clock_cast<std::chrono::system_clock>(lastWriteTime);
+            auto durationSinceLastWrite = now - lastWriteTimeSys;
+            if (durationSinceLastWrite > keep_duration) {
+                try
+                {
+                    fs::remove(entry.path());
+                    //std::cout << "Deleted:[" << formatDuration(durationSinceLastWrite) << "] " << entry.path() << " : " << formatTimePoint(lastWriteTimeSys) << std::endl;
+                    RP_LOG_INFO("Deleted:[{}] {} : {}", formatDuration(durationSinceLastWrite), entry.path(), formatTimePoint(lastWriteTimeSys));
+                }
+                catch (const fs::filesystem_error& e)
+                {
+                    //std::cerr << "Error deleting file " << entry.path() << ": " << e.what() << std::endl;
+                    RP_LOG_INFO("Error deleting file {}: {}", entry.path(), e.what());
+                }
+            }
+            else
+            {
+                //std::cout << "Keep:[" << formatDuration(durationSinceLastWrite) << "] " << entry.path() << " : " << formatTimePoint(lastWriteTimeSys) << std::endl;
+                RP_LOG_INFO("Keep:[{}] {} : {}", formatDuration(durationSinceLastWrite), entry.path(), formatTimePoint(lastWriteTimeSys));
+            }
+        }
+    }
+    RP_LOG_INFO("Start delete [{}].", dir_name);
+    auto [totalSizeNew, fileCountNew] = getFolderInfo(dir_name, exludes);
+    //printFolderInfo(dir_name, totalSizeNew, fileCountNew);
+    RP_LOG_WARN("{} total size: {}, File count: {}. Free size: {}, Free file count: {}",
+        dir_name, getSizeStr(totalSizeNew), fileCountNew, getSizeStr(totalSize - totalSizeNew), fileCount - fileCountNew);
+    RP_LOG_INFO("End delete [{}].", dir_name);
+}

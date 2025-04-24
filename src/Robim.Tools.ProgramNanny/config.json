@@ -1,14 +1,25 @@
 [
   {
     "dir_name": "F:\\src\\robim\\web_cam\\bin\\Debug\\net8.0-windows\\Dump",
-    "keep_duration": 120,
-    "exludes": "",
+    "keep_hours": 120,
+    "includes": "",
+    "excludes": "",
     "enable": true
   },
   {
     "dir_name": "F:\\src\\robim\\web_cam\\bin\\Debug\\net8.0-windows\\Resources",
-    "keep_duration": 120,
-    "exludes": "scene_*",
+    "keep_hours": 120,
+    "includes": "",
+    "excludes": "scene_*",
+    "enable": true
+  },
+  {
+    "dir_name": "F:\\src\\robim\\web_cam\\bin\\Debug\\net8.0-windows\\Resources",
+    "keep_hours": 0,
+    "includes": "LaserFiles;SceneFiles",
+    "excludes": "scene_*",
     "enable": true
   }
+
+
 ]

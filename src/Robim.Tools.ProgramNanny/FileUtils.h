@@ -18,8 +18,9 @@ bool DeleteOldFilesByConfigFile(const std::string& configFile);
 // 定义结构体
 struct ConfigEntry {
     std::string dir_name;
-    std::chrono::hours keep_duration;
-    std::string exludes;
+    std::chrono::hours keep_hours;
+    std::string includes;
+    std::string excludes;
     bool enable;  // 新增字段，用来表示配置是否生效
 };
 
@@ -27,8 +28,12 @@ struct ConfigEntry {
 bool matchesExclusion(const fs::path& path, const std::string& exclusion);
 // 解析排除列表
 std::vector<std::string> parseExcludes(const std::string& exludes, const std::string& dir_name);
+// 解析包含列表
+std::vector<std::string> parseIncludes(const std::string& includes, const std::string& dir_name);
 // 检查文件或文件夹是否在排除列表中
 bool isExcluded(const fs::path& path, const std::vector<std::string>& excludesList);
+// 检查文件或文件夹是否在包含列表中
+bool isIncluded(const fs::path& path, const std::vector<std::string>& includesList);
 // 将 std::chrono::system_clock::time_point 格式化为友好的字符串
 std::string formatTimePoint(const std::chrono::system_clock::time_point& timePoint);
 // 打印文件夹信息
@@ -60,49 +65,4 @@ std::string formatDuration(const std::chrono::duration<Rep, Period>& duration) {
 
 // 递归删除旧文件
 template<typename Rep, typename Period>
-void DeleteOldFiles(const std::string& dir_name, std::chrono::duration<Rep, Period> keep_duration, const std::string& exludes = "") {
-    auto excludesList = parseExcludes(exludes, dir_name);
-    auto now = std::chrono::system_clock::now();
-
-    //std::cout << "Keep duration: " << formatDuration(keep_duration) << std::endl;
-	RP_LOG_INFO("Start delete [{}]. Keep duration: {}", dir_name, formatDuration(keep_duration));
-    auto [totalSize, fileCount] = getFolderInfo(dir_name, exludes);
-	printFolderInfo(dir_name, totalSize, fileCount);
-    for (const auto& entry : fs::recursive_directory_iterator(dir_name)) {
-        if (isExcluded(entry.path(), excludesList)) 
-        {
-            //std::cout << "Excluded: " << entry.path() << std::endl;
-			RP_LOG_INFO("Excluded: {}", entry.path());
-            continue;
-        }
-        if (entry.is_regular_file()) {
-            auto lastWriteTime = fs::last_write_time(entry.path());
-            auto lastWriteTimeSys = std::chrono::clock_cast<std::chrono::system_clock>(lastWriteTime);
-            auto durationSinceLastWrite = now - lastWriteTimeSys;
-            if (durationSinceLastWrite > keep_duration) {
-                try
-                {
-                    fs::remove(entry.path());
-                    //std::cout << "Deleted:[" << formatDuration(durationSinceLastWrite) << "] " << entry.path() << " : " << formatTimePoint(lastWriteTimeSys) << std::endl;
-					RP_LOG_INFO("Deleted:[{}] {} : {}", formatDuration(durationSinceLastWrite), entry.path(), formatTimePoint(lastWriteTimeSys));
-                }
-                catch (const fs::filesystem_error& e)
-                {
-                    //std::cerr << "Error deleting file " << entry.path() << ": " << e.what() << std::endl;
-					RP_LOG_INFO("Error deleting file {}: {}", entry.path(), e.what());
-                }
-            }
-            else
-            {
-                //std::cout << "Keep:[" << formatDuration(durationSinceLastWrite) << "] " << entry.path() << " : " << formatTimePoint(lastWriteTimeSys) << std::endl;
-				RP_LOG_INFO("Keep:[{}] {} : {}", formatDuration(durationSinceLastWrite), entry.path(), formatTimePoint(lastWriteTimeSys));
-            }
-        }
-    }
-    RP_LOG_INFO("Start delete [{}].", dir_name);
-    auto [totalSizeNew, fileCountNew] = getFolderInfo(dir_name, exludes);
-    //printFolderInfo(dir_name, totalSizeNew, fileCountNew);
-	RP_LOG_WARN("{} total size: {}, File count: {}. Free size: {}, Free file count: {}",
-        dir_name, getSizeStr(totalSizeNew), fileCountNew, getSizeStr(totalSize-totalSizeNew), fileCount- fileCountNew);
-    RP_LOG_INFO("End delete [{}].", dir_name);
-}
+void DeleteOldFiles(const std::string& dir_name, std::chrono::duration<Rep, Period> keep_duration, const std::string& exludes = "", const std::string& includes = "");
