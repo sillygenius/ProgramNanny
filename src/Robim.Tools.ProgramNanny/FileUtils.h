@@ -24,6 +24,11 @@ struct ConfigEntry {
     bool enable;  // 新增字段，用来表示配置是否生效
 };
 
+struct RootConfig {
+    std::string root_dir;
+    std::vector<ConfigEntry> configs;
+};
+
 // 检查路径是否匹配排除项
 bool matchesExclusion(const fs::path& path, const std::string& exclusion);
 // 解析排除列表
@@ -66,3 +71,6 @@ std::string formatDuration(const std::chrono::duration<Rep, Period>& duration) {
 // 递归删除旧文件
 template<typename Rep, typename Period>
 void DeleteOldFiles(const std::string& dir_name, std::chrono::duration<Rep, Period> keep_duration, const std::string& exludes = "", const std::string& includes = "");
+
+// 从 JSON 配置文件读取多组参数
+bool readConfig(const std::string& configFile, RootConfig& rootConfig);

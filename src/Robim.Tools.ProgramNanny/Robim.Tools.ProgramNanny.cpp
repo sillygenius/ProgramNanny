@@ -19,7 +19,13 @@ int main(int argc, char ** argv)
 
 	//DeleteOldFiles(R"(F:\src\robim\web_cam\bin\Debug\net8.0-windows\Resources)", std::chrono::days(10), "scene_*");
 	
-	DeleteOldFilesByConfigFile("config.json");
+    std::string configFile = "config.json";
+    if (DeleteOldFilesByConfigFile(configFile)) {
+        // 处理成功
+    }
+    else {
+        // 处理失败
+    }
 }
 
 
