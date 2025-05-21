@@ -1,5 +1,5 @@
 {
-  "root_dir": "F:\\src\\robim\\web_cam\\bin\\Debug\\net8.0-windows",
+  "root_dir": "F:\\src\\robim_zyb\\web_cam\\bin\\Debug\\net8.0-windows",
   "configs": [
     {
       "dir_name": "Dump",
@@ -12,19 +12,19 @@
       "dir_name": "Resources",
       "keep_hours": 120,
       "includes": "",
-      "excludes": "scene_*",
+      "excludes": "scene_*;UrdfFiles;win32-x86-64",
       "enable": true
     },
     {
       "dir_name": "Resources",
       "keep_hours": 0,
       "includes": "LaserFiles;SceneFiles",
-      "excludes": "scene_*",
+      "excludes": "scene_*;UrdfFiles;win32-x86-64",
       "enable": true
     },
     {
       "dir_name": "Logs",
-      "keep_hours": 0,
+      "keep_hours": 1200,
       "includes": "",
       "excludes": "",
       "enable": true

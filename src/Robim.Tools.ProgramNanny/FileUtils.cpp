@@ -1,6 +1,8 @@
 ﻿#include "FileUtils.h"
 #include <nlohmann/json.hpp>
+#include <filesystem>
 
+namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 // 实现 JSON 序列化函数
@@ -221,6 +223,63 @@ void printFolderInfo(const std::string& dir_name, const std::string& exludes /*=
 	printFolderInfo(dir_name, totalSize, fileCount);
 }
 
+static void removeFile(const std::string& filePathName, const std::string& rootPath)
+{
+	//fs::remove(filePathName);
+
+	// 获取当前路径
+	fs::path currentPath = fs::current_path();
+	// 获取路径的根名称，对于 Windows 系统就是硬盘盘符
+	fs::path curRootName = currentPath.root_name();
+	//fs::path destRootPath = fs::path("Robim.Tools.ProgramNanny\\DeleteFiles");
+	fs::path destRootPath = fs::path("DeletedFiles");
+	destRootPath = curRootName / destRootPath;
+	if (!fs::exists(destRootPath)) {
+		fs::create_directories(destRootPath);
+	}
+
+	RP_LOG_INFO("Delete file: [{}]", filePathName);
+
+	fs::path fullPath(filePathName);
+	fs::path sourceRootPath(rootPath);
+	sourceRootPath = sourceRootPath.parent_path();
+
+	// 计算相对路径
+	fs::path relativePath = fs::relative(fullPath, sourceRootPath);
+
+	fs::path destinationPath = fs::path(destRootPath) / relativePath;
+	// 检查目标路径的父目录是否存在，如果不存在则创建
+	fs::path destinationParent = destinationPath.parent_path();
+	if (!fs::exists(destinationParent)) {
+		fs::create_directories(destinationParent);
+	}
+
+	// 移动文件
+	fs::rename(fullPath, destinationPath);
+}
+
+void deleteEmptyFolders(const fs::path& dir) {
+	if (!fs::exists(dir) || !fs::is_directory(dir)) {
+		return;
+	}
+
+	for (auto it = fs::directory_iterator(dir); it != fs::directory_iterator(); ++it) {
+		if (fs::is_directory(it->path())) {
+			deleteEmptyFolders(it->path());
+		}
+	}
+
+	if (fs::is_empty(dir)) {
+		try {
+			fs::remove(dir);
+			RP_LOG_INFO("Deleted empty folder: {}", dir);
+		}
+		catch (const fs::filesystem_error& e) {
+			RP_LOG_ERROR("Error deleting empty folder {} : {}", dir, e.what());
+		}
+	}
+}
+
 
 // 递归删除旧文件
 template<typename Rep, typename Period>
@@ -247,7 +306,8 @@ void DeleteOldFiles(const std::string& dir_name, std::chrono::duration<Rep, Peri
 			if (durationSinceLastWrite > keep_duration) {
 				try
 				{
-					fs::remove(entry.path());
+					//fs::remove(entry.path());
+					removeFile(entry.path().string(), dir_name);
 					//std::cout << "Deleted:[" << formatDuration(durationSinceLastWrite) << "] " << entry.path() << " : " << formatTimePoint(lastWriteTimeSys) << std::endl;
 					RP_LOG_INFO("Deleted:[{}] {} : {}", formatDuration(durationSinceLastWrite), entry.path(), formatTimePoint(lastWriteTimeSys));
 				}
@@ -264,16 +324,29 @@ void DeleteOldFiles(const std::string& dir_name, std::chrono::duration<Rep, Peri
 			}
 		}
 	}
-	RP_LOG_INFO("Start delete [{}].", dir_name);
 	auto [totalSizeNew, fileCountNew] = getFolderInfo(dir_name, exludes);
 	//printFolderInfo(dir_name, totalSizeNew, fileCountNew);
 	RP_LOG_WARN("{} total size: {}, File count: {}. Free size: {}, Free file count: {}",
 		dir_name, getSizeStr(totalSizeNew), fileCountNew, getSizeStr(totalSize - totalSizeNew), fileCount - fileCountNew);
 	RP_LOG_INFO("End delete [{}].", dir_name);
+
+	deleteEmptyFolders(dir_name);
+}
+
+
+// 获取当前可执行文件所在目录
+static fs::path getExecutableDirectory() {
+	wchar_t path[MAX_PATH];
+	DWORD result = GetModuleFileNameW(NULL, path, MAX_PATH);
+	if (result == 0) {
+		std::wcerr << L"无法获取可执行文件路径，错误代码: " << GetLastError() << std::endl;
+		exit(1);
+	}
+	return fs::path(path).parent_path();
 }
 
 // 根据配置文件删除旧文件
-bool DeleteOldFilesByConfigFile(const std::string& configFile) {
+bool DeleteOldFilesByConfigFile2(const std::string& configFile) {
 	RootConfig rootConfig;
 
 	if (!readConfig(configFile, rootConfig)) {
@@ -290,4 +363,59 @@ bool DeleteOldFilesByConfigFile(const std::string& configFile) {
 		DeleteOldFiles(configItem.dir_name, configItem.keep_hours, configItem.excludes, configItem.includes);
 	}
 	return true;
+}
+// 根据配置文件删除旧文件
+bool DeleteOldFilesByConfigFile(const std::string& configFile) {
+	RootConfig rootConfig;
+
+	if (!readConfig(getAbslutePath(configFile), rootConfig)) {
+		RP_LOG_ERROR("Failed to read config file: {}", configFile);
+		return false;
+	}
+
+	for (const auto& configItem : rootConfig.configs) {
+		if (!configItem.enable) {
+			RP_LOG_WARN("Skipping disabled config for directory: {}", configItem.dir_name);
+			continue;
+		}
+		RP_LOG_INFO("Processing directory: {},keep_hours={},excludes={},includes={}", configItem.dir_name, configItem.keep_hours, configItem.excludes, configItem.includes);
+		DeleteOldFiles(configItem.dir_name, configItem.keep_hours, configItem.excludes, configItem.includes);
+	}
+	return true;
+}
+
+
+// 如果是绝对路径，直接返回；
+// 否则，先在当前目录查找，如果找不到，再返回相对于exe目录的绝对路径
+std::string getAbslutePath(const std::string& filePath)
+{
+	fs::path retFilePath(filePath);
+	// 检查是否为绝对路径
+	if (!retFilePath.is_absolute()) {
+		// 先尝试在当前目录查找
+		fs::path currentPath = fs::current_path() / retFilePath;
+		if (!fs::exists(currentPath)) {
+			// 当前目录找不到，尝试在 exe 所在目录查找
+			//RP_LOG_WARN("当前目录找不到{}，尝试在 exe 所在目录查找。", currentPath);
+			fs::path exeDir = getExecutableDirectory();
+			fs::path exePath = exeDir / retFilePath;
+			//if (!fs::exists(exePath)) {
+			//	RP_LOG_ERROR("Failed to read config file: {}", filePath);
+			//	return "";
+			//}
+			retFilePath = exePath;
+		}
+		else {
+			retFilePath = currentPath;
+		}
+	}
+	else {
+		// 绝对路径直接检查文件是否存在
+		//if (!fs::exists(retFilePath)) {
+		//	RP_LOG_WARN("Failed to find file: {}", filePath);
+		//	return "";
+		//}
+	}
+
+	return retFilePath.string();
 }

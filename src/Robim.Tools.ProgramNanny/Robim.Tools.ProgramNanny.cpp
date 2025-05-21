@@ -31,6 +31,8 @@
 
 
 int main(int argc, char* argv[]) {
+	RP_LOG_Init("logs/ProgramNanny.log");
+
     if (argc < 2) {
         //std::cerr << "用法: " << argv[0] << " --create-task 或 " << argv[0] << " --remove-task" << std::endl;
         //return 1;

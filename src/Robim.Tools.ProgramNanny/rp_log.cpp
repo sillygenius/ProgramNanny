@@ -1,7 +1,12 @@
 #include "rp_log.h"
+#include "FileUtils.h"
+
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
+#include <filesystem>
+namespace fs = std::filesystem;
+
 
 void RP_LOG_Init(const std::string& logFilePath)
 {
@@ -11,10 +16,12 @@ void RP_LOG_Init(const std::string& logFilePath)
     //auto logger = spdlog::rotating_logger_mt("rp_log", logFilePath, max_size, max_files);
     //spdlog::set_default_logger(logger);
 
+	std::string logAbsolutePath = getAbslutePath(logFilePath);
+
     auto sink1 = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
     //sink1->set_pattern("[%Y-%m-%d %H:%M:%S] [%l] %v");
     //auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    auto sink2 = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath);
+    auto sink2 = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logAbsolutePath);
     spdlog::sinks_init_list sinks = { sink1,sink2 };
 
     auto logger = std::make_shared<spdlog::logger>("rp_logger", sinks.begin(), sinks.end());

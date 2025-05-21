@@ -74,3 +74,7 @@ void DeleteOldFiles(const std::string& dir_name, std::chrono::duration<Rep, Peri
 
 // 从 JSON 配置文件读取多组参数
 bool readConfig(const std::string& configFile, RootConfig& rootConfig);
+
+// 如果是绝对路径，直接返回；
+// 否则，先在当前目录查找，如果找不到，再返回相对于exe目录的绝对路径
+std::string getAbslutePath(const std::string& filePath);
