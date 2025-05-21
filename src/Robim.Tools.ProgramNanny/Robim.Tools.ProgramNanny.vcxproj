@@ -147,11 +147,13 @@
     <ClCompile Include="MyApp.cpp" />
     <ClCompile Include="Robim.Tools.ProgramNanny.cpp" />
     <ClCompile Include="rp_log.cpp" />
+    <ClCompile Include="WinTaskManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FileUtils.h" />
     <ClInclude Include="MyApp.h" />
     <ClInclude Include="rp_log.h" />
+    <ClInclude Include="WinTaskManager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="config.json" />

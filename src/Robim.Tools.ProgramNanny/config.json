@@ -21,6 +21,13 @@
       "includes": "LaserFiles;SceneFiles",
       "excludes": "scene_*",
       "enable": true
+    },
+    {
+      "dir_name": "Logs",
+      "keep_hours": 0,
+      "includes": "",
+      "excludes": "",
+      "enable": true
     }
   ]
 }
