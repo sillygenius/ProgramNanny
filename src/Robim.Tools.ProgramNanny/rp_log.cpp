@@ -1,4 +1,4 @@
-#include "rp_log.h"
+﻿#include "rp_log.h"
 #include "FileUtils.h"
 
 #include "spdlog/sinks/rotating_file_sink.h"
@@ -21,7 +21,16 @@ void RP_LOG_Init(const std::string& logFilePath)
     auto sink1 = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
     //sink1->set_pattern("[%Y-%m-%d %H:%M:%S] [%l] %v");
     //auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    auto sink2 = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logAbsolutePath);
+    //auto sink2 = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logAbsolutePath);
+    
+    // 创建 rotating_file_sink
+    auto sink2 = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        logAbsolutePath,//"logs/ProgramNanny_%Y%m%d.log",    // 文件名包含日期
+        1048576 * 10,                      // 10MB 每个文件
+        3,                                // 最多保留 3 个文件
+        false                             // 每次启动不重新生成一个log文件
+    );
+
     spdlog::sinks_init_list sinks = { sink1,sink2 };
 
     auto logger = std::make_shared<spdlog::logger>("rp_logger", sinks.begin(), sinks.end());

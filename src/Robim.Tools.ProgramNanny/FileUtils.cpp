@@ -223,14 +223,50 @@ void printFolderInfo(const std::string& dir_name, const std::string& exludes /*=
 	printFolderInfo(dir_name, totalSize, fileCount);
 }
 
+// 获取当前可执行文件所在目录
+static fs::path getExecutableDirectory() {
+	wchar_t path[MAX_PATH];
+	DWORD result = GetModuleFileNameW(NULL, path, MAX_PATH);
+	if (result == 0) {
+		std::wcerr << L"无法获取可执行文件路径，错误代码: " << GetLastError() << std::endl;
+		exit(1);
+	}
+	return fs::path(path).parent_path();
+}
+
+bool CleanUpPreDeletedFiles()
+{
+	try
+	{
+		// 获取当前路径
+		fs::path currentPath = getExecutableDirectory();
+		fs::path curRootName = currentPath;// currentPath.root_name();
+		fs::path destRootPath = fs::path("DeletedFiles");
+		destRootPath = curRootName / destRootPath;
+		if (fs::exists(destRootPath)) {
+			RP_LOG_INFO("Start  Delete pre-deleted files: [{}]", destRootPath);
+			fs::remove_all(destRootPath);
+			RP_LOG_INFO("End  Delete pre-deleted files: [{}]", destRootPath);
+		}
+	}
+	catch (const std::exception& e) {
+		RP_LOG_ERROR("运行时错误: {}", e.what());
+		return 1;
+	}
+	return true;
+}
+
 static void removeFile(const std::string& filePathName, const std::string& rootPath)
 {
 	//fs::remove(filePathName);
 
 	// 获取当前路径
-	fs::path currentPath = fs::current_path();
+	//fs::path currentPath = fs::current_path();
+	fs::path currentPath = getExecutableDirectory();
+
 	// 获取路径的根名称，对于 Windows 系统就是硬盘盘符
-	fs::path curRootName = currentPath.root_name();
+	//fs::path curRootName = currentPath.root_name();
+	fs::path curRootName = currentPath;
 	//fs::path destRootPath = fs::path("Robim.Tools.ProgramNanny\\DeleteFiles");
 	fs::path destRootPath = fs::path("DeletedFiles");
 	destRootPath = curRootName / destRootPath;
@@ -258,7 +294,7 @@ static void removeFile(const std::string& filePathName, const std::string& rootP
 	fs::rename(fullPath, destinationPath);
 }
 
-void deleteEmptyFolders(const fs::path& dir) {
+void deleteEmptyFolders(const fs::path& dir, bool deleteRootDir = false) {
 	if (!fs::exists(dir) || !fs::is_directory(dir)) {
 		return;
 	}
@@ -269,7 +305,7 @@ void deleteEmptyFolders(const fs::path& dir) {
 		}
 	}
 
-	if (fs::is_empty(dir)) {
+	if (deleteRootDir && fs::is_empty(dir)) {
 		try {
 			fs::remove(dir);
 			RP_LOG_INFO("Deleted empty folder: {}", dir);
@@ -292,6 +328,11 @@ void DeleteOldFiles(const std::string& dir_name, std::chrono::duration<Rep, Peri
 	RP_LOG_INFO("Start delete [{}]. Keep duration: {}", dir_name, formatDuration(keep_duration));
 	auto [totalSize, fileCount] = getFolderInfo(dir_name, exludes);
 	printFolderInfo(dir_name, totalSize, fileCount);
+	if (fs::exists(dir_name) == false)
+	{
+		RP_LOG_WARN("Directory does not exist: {}", dir_name);
+		return;
+	}
 	for (const auto& entry : fs::recursive_directory_iterator(dir_name)) {
 		if (isExcluded(entry.path(), excludesList) || !isIncluded(entry.path(), includesList))
 		{
@@ -334,16 +375,6 @@ void DeleteOldFiles(const std::string& dir_name, std::chrono::duration<Rep, Peri
 }
 
 
-// 获取当前可执行文件所在目录
-static fs::path getExecutableDirectory() {
-	wchar_t path[MAX_PATH];
-	DWORD result = GetModuleFileNameW(NULL, path, MAX_PATH);
-	if (result == 0) {
-		std::wcerr << L"无法获取可执行文件路径，错误代码: " << GetLastError() << std::endl;
-		exit(1);
-	}
-	return fs::path(path).parent_path();
-}
 
 // 根据配置文件删除旧文件
 bool DeleteOldFilesByConfigFile2(const std::string& configFile) {

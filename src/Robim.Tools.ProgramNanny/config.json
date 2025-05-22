@@ -28,6 +28,27 @@
       "includes": "",
       "excludes": "",
       "enable": true
+    },
+    {
+      "dir_name": "F:\\src\\robim_zyB\\robim_phd_main\\bin\\Debug\\net48\\Dump",
+      "keep_hours": 120,
+      "includes": "",
+      "excludes": "",
+      "enable": true
+    },
+    {
+      "dir_name": "F:\\src\\robim_zyB\\robim_phd_main\\bin\\Debug\\net48\\temp\\dump",
+      "keep_hours": 120,
+      "includes": "",
+      "excludes": "",
+      "enable": true
+    },
+    {
+      "dir_name": "F:\\src\\robim_zyB\\robim_phd_main\\bin\\Debug\\net48\\Logs",
+      "keep_hours": 1200,
+      "includes": "",
+      "excludes": "",
+      "enable": true
     }
   ]
 }

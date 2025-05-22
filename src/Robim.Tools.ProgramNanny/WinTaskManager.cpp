@@ -1,44 +1,48 @@
+ï»¿#include "rp_log.h"
 #include "WinTaskManager.h"
 #include <iostream>
 #include <windows.h>
 #include <string>
-#include <shlwapi.h> // ĞèÒªÁ´½Ó Shlwapi.lib
+#include <shlwapi.h> // éœ€è¦é“¾æ¥ Shlwapi.lib
 #pragma comment(lib, "Shlwapi.lib")
 
-const std::wstring SCHEDULED_TASK_NAME = L"Robim.Tools.ProgramNanny";
 
-// »ñÈ¡µ±Ç°½ø³ÌµÄ¿ÉÖ´ĞĞÎÄ¼şÂ·¾¶£¨¿í×Ö·û°æ±¾£©
+
+// è·å–å½“å‰è¿›ç¨‹çš„å¯æ‰§è¡Œæ–‡ä»¶è·¯å¾„ï¼ˆå®½å­—ç¬¦ç‰ˆæœ¬ï¼‰
 std::wstring getExecutablePath() {
     wchar_t path[MAX_PATH];
     DWORD result = GetModuleFileNameW(NULL, path, MAX_PATH);
     if (result == 0) {
-        std::wcerr << L"ÎŞ·¨»ñÈ¡¿ÉÖ´ĞĞÎÄ¼şÂ·¾¶£¬´íÎóÂë: " << GetLastError() << std::endl;
+        std::wcerr << L"æ— æ³•è·å–å¯æ‰§è¡Œæ–‡ä»¶è·¯å¾„ï¼Œé”™è¯¯ç : " << GetLastError() << std::endl;
         exit(1);
     }
     return std::wstring(path);
 }
 
-// »ñÈ¡¿ÉÖ´ĞĞÎÄ¼şËùÔÚµÄÄ¿Â¼
+// è·å–å¯æ‰§è¡Œæ–‡ä»¶æ‰€åœ¨çš„ç›®å½•
 std::wstring getExecutableDirectory(const std::wstring& exePath) {
     std::wstring directory = exePath;
-    PathRemoveFileSpecW(directory.data()); // ÒÆ³ıÎÄ¼şÃû£¬Ö»±£ÁôÄ¿Â¼Â·¾¶
+    PathRemoveFileSpecW(directory.data()); // ç§»é™¤æ–‡ä»¶åï¼Œåªä¿ç•™ç›®å½•è·¯å¾„
     return directory;
 }
 
 
-void WinTaskManager::createScheduledTask(const std::wstring& exePath) {
+void WinTaskManager::createScheduledTask(const std::wstring& taskName, const std::wstring& exePath, const std::wstring& params, const std::wstring& sc, const std::wstring& st) {
 	const std::wstring& exePath_ = exePath.empty() ? getExecutablePath() : exePath;
 	const std::wstring& exeDir = getExecutableDirectory(exePath_);
-    std::wstring command = L"schtasks /create /tn \"" + SCHEDULED_TASK_NAME + L"\" /tr \"";
-    command += exePath_;
-    command += L"\" /sc daily /st 01:00 /sd 2025-05-01";
+    std::wstring command = L"schtasks /create /tn \"" + taskName + L"\" /tr \"";
+    command += exePath_ + L" " + params;
+    command += L"\" /sc daily /st " + st + L" /sd 2025-05-01";
+
+    //RP_LOG_INFO("å‘½ä»¤: ");
+    //std::wcerr << L"å‘½ä»¤: " << command << std::endl;
 
     int result = _wsystem(command.c_str());
     if (result == 0) {
-        std::wcout << L"¼Æ»®ÈÎÎñÒÑ³É¹¦´´½¨£¡" << std::endl;
+        std::wcout << L"è®¡åˆ’ä»»åŠ¡å·²æˆåŠŸåˆ›å»ºï¼" << std::endl;
     }
     else {
-        std::wcerr << L"´´½¨¼Æ»®ÈÎÎñÊ§°Ü£¬´íÎóÂë£º" << result << std::endl;
+        std::wcerr << L"åˆ›å»ºè®¡åˆ’ä»»åŠ¡å¤±è´¥ï¼Œé”™è¯¯ç ï¼š" << result << std::endl;
     }
 }
 
@@ -50,23 +54,23 @@ void WinTaskManager::createScheduledTask(const std::wstring& exePath) {
 //
 //    int result = _wsystem(command.c_str());
 //    if (result == 0) {
-//        std::wcout << L"¼Æ»®ÈÎÎñÒÑ³É¹¦´´½¨£¡" << std::endl;
+//        std::wcout << L"è®¡åˆ’ä»»åŠ¡å·²æˆåŠŸåˆ›å»ºï¼" << std::endl;
 //    }
 //    else {
-//        std::wcerr << L"´´½¨¼Æ»®ÈÎÎñÊ§°Ü£¬´íÎóÂë£º" << result << std::endl;
+//        std::wcerr << L"åˆ›å»ºè®¡åˆ’ä»»åŠ¡å¤±è´¥ï¼Œé”™è¯¯ç ï¼š" << result << std::endl;
 //    }
 //}
 
 
 
-void WinTaskManager::removeScheduledTask() {
-    std::wstring command = L"schtasks /delete /tn \"" + SCHEDULED_TASK_NAME + L"\" /f";
+void WinTaskManager::removeScheduledTask(const std::wstring& taskName) {
+    std::wstring command = L"schtasks /delete /tn \"" + taskName + L"\" /f";
     int result = _wsystem(command.c_str());
     if (result == 0) {
-        std::wcout << L"¼Æ»®ÈÎÎñÒÑ³É¹¦É¾³ı£¡" << std::endl;
+        std::wcout << L"è®¡åˆ’ä»»åŠ¡å·²æˆåŠŸåˆ é™¤ï¼" << std::endl;
     }
     else {
-        std::wcerr << L"É¾³ı¼Æ»®ÈÎÎñÊ§°Ü£¬´íÎóÂë£º" << result << std::endl;
+        std::wcerr << L"åˆ é™¤è®¡åˆ’ä»»åŠ¡å¤±è´¥ï¼Œé”™è¯¯ç ï¼š" << result << std::endl;
     }
 }
 
@@ -74,7 +78,7 @@ void WinTaskManager::removeScheduledTask() {
 //
 //int wmain(int argc, wchar_t* argv[]) {
 //    if (argc < 2) {
-//        std::wcerr << L"ÓÃ·¨: " << argv[0] << L" --create-task »ò " << argv[0] << L" --remove-task" << std::endl;
+//        std::wcerr << L"ç”¨æ³•: " << argv[0] << L" --create-task æˆ– " << argv[0] << L" --remove-task" << std::endl;
 //        return 1;
 //    }
 //
@@ -88,8 +92,8 @@ void WinTaskManager::removeScheduledTask() {
 //        removeScheduledTask();
 //    }
 //    else {
-//        std::wcerr << L"ÎŞĞ§µÄ²ÎÊı: " << arg << std::endl;
-//        std::wcerr << L"ÓÃ·¨: " << argv[0] << L" --create-task »ò " << argv[0] << L" --remove-task" << std::endl;
+//        std::wcerr << L"æ— æ•ˆçš„å‚æ•°: " << arg << std::endl;
+//        std::wcerr << L"ç”¨æ³•: " << argv[0] << L" --create-task æˆ– " << argv[0] << L" --remove-task" << std::endl;
 //        return 1;
 //    }
 //
