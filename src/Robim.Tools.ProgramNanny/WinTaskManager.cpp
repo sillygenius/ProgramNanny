@@ -32,7 +32,7 @@ void WinTaskManager::createScheduledTask(const std::wstring& taskName, const std
 	const std::wstring& exeDir = getExecutableDirectory(exePath_);
     std::wstring command = L"schtasks /create /tn \"" + taskName + L"\" /tr \"";
     command += exePath_ + L" " + params;
-    command += L"\" /sc daily /st " + st + L" /sd 2025-05-01";
+    command += L"\" /sc " + sc + L" /st " + st + L" /sd 2025-05-01";
 
     //RP_LOG_INFO("命令: ");
     //std::wcerr << L"命令: " << command << std::endl;
