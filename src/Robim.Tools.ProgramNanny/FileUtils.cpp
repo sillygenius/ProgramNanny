@@ -1,4 +1,4 @@
-﻿#include "FileUtils.h"
+#include "FileUtils.h"
 #include <nlohmann/json.hpp>
 #include <filesystem>
 
@@ -340,29 +340,37 @@ void DeleteOldFiles(const std::string& dir_name, std::chrono::duration<Rep, Peri
 			RP_LOG_INFO("Excluded: {}", entry.path());
 			continue;
 		}
-		if (entry.is_regular_file()) {
-			auto lastWriteTime = fs::last_write_time(entry.path());
-			auto lastWriteTimeSys = std::chrono::clock_cast<std::chrono::system_clock>(lastWriteTime);
-			auto durationSinceLastWrite = now - lastWriteTimeSys;
-			if (durationSinceLastWrite > keep_duration) {
-				try
-				{
-					//fs::remove(entry.path());
-					removeFile(entry.path().string(), dir_name);
-					//std::cout << "Deleted:[" << formatDuration(durationSinceLastWrite) << "] " << entry.path() << " : " << formatTimePoint(lastWriteTimeSys) << std::endl;
-					RP_LOG_INFO("Deleted:[{}] {} : {}", formatDuration(durationSinceLastWrite), entry.path(), formatTimePoint(lastWriteTimeSys));
+		try
+		{
+			if (entry.is_regular_file()) {
+				auto lastWriteTime = fs::last_write_time(entry.path());
+				auto lastWriteTimeSys = std::chrono::clock_cast<std::chrono::system_clock>(lastWriteTime);
+				auto durationSinceLastWrite = now - lastWriteTimeSys;
+				if (durationSinceLastWrite > keep_duration) {
+					try
+					{
+						//fs::remove(entry.path());
+						removeFile(entry.path().string(), dir_name);
+						//std::cout << "Deleted:[" << formatDuration(durationSinceLastWrite) << "] " << entry.path() << " : " << formatTimePoint(lastWriteTimeSys) << std::endl;
+						RP_LOG_INFO("Deleted:[{}] {} : {}", formatDuration(durationSinceLastWrite), entry.path(), formatTimePoint(lastWriteTimeSys));
+					}
+					catch (const fs::filesystem_error& e)
+					{
+						//std::cerr << "Error deleting file " << entry.path() << ": " << e.what() << std::endl;
+						RP_LOG_INFO("Error deleting file {}: {}", entry.path(), e.what());
+					}
 				}
-				catch (const fs::filesystem_error& e)
+				else
 				{
-					//std::cerr << "Error deleting file " << entry.path() << ": " << e.what() << std::endl;
-					RP_LOG_INFO("Error deleting file {}: {}", entry.path(), e.what());
+					//std::cout << "Keep:[" << formatDuration(durationSinceLastWrite) << "] " << entry.path() << " : " << formatTimePoint(lastWriteTimeSys) << std::endl;
+					RP_LOG_INFO("Keep:[{}] {} : {}", formatDuration(durationSinceLastWrite), entry.path(), formatTimePoint(lastWriteTimeSys));
 				}
 			}
-			else
-			{
-				//std::cout << "Keep:[" << formatDuration(durationSinceLastWrite) << "] " << entry.path() << " : " << formatTimePoint(lastWriteTimeSys) << std::endl;
-				RP_LOG_INFO("Keep:[{}] {} : {}", formatDuration(durationSinceLastWrite), entry.path(), formatTimePoint(lastWriteTimeSys));
-			}
+		}
+		catch (const fs::filesystem_error& e)
+		{
+			// 路径过长，直接跳过
+			RP_LOG_ERROR("Error deleting file {}: {}", entry.path(), e.what());
 		}
 	}
 	auto [totalSizeNew, fileCountNew] = getFolderInfo(dir_name, exludes);

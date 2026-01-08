@@ -1,4 +1,4 @@
-﻿// Robim.Tools.ProgramNanny.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
+// Robim.Tools.ProgramNanny.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
 //
 
 #include <iostream>
@@ -9,6 +9,8 @@
 #include "rp_log.h"
 #include "WinTaskManager.h"
 
+const std::wstring VERSION = L"2026-01-08";
+
 const std::wstring PRE_DELETE_TASK_NAME = L"Robim.Tools.ProgramNanny_PreDelete";
 const std::wstring CLEARN_UP_TASK_NAME = L"Robim.Tools.ProgramNanny_CleanUp";
 
@@ -17,7 +19,7 @@ namespace fs = std::filesystem;
 
 // 显示帮助信息
 void showHelp() {
-    std::cout << "ProgramNanny 文件管理工具使用说明:" << std::endl;
+    std::cout << "ProgramNanny[" << VERSION << "] 文件管理工具使用说明:" << std::endl;
     std::cout << "用法:" << std::endl;
     std::cout << "  --pre-delete                           执行预删除操作" << std::endl;
     std::cout << "  --clean-up-pre-deleted                 清理预删除的文件" << std::endl;

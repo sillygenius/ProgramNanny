@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ConfigEditor.cpp" />
     <ClCompile Include="FileUtils.cpp" />
     <ClCompile Include="MyApp.cpp" />
     <ClCompile Include="Robim.Tools.ProgramNanny.cpp" />
@@ -150,6 +151,7 @@
     <ClCompile Include="WinTaskManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ConfigEditor.h" />
     <ClInclude Include="FileUtils.h" />
     <ClInclude Include="MyApp.h" />
     <ClInclude Include="rp_log.h" />
